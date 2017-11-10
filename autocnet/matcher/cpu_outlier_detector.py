@@ -95,7 +95,7 @@ def spatial_suppression(df, domain, min_radius=1.5, k=250, error_k=0.1):
     df = df.sort_values(by=['strength'], ascending=False).copy()
     max_radius = max(domain)
     mask = pd.Series(False, index=df.index)
-
+    print(len(df))
     process = True
     if k > len(df):
         warnings.warn('Only {} valid points, but {} points requested'.format(len(df), k))
@@ -107,7 +107,8 @@ def spatial_suppression(df, domain, min_radius=1.5, k=250, error_k=0.1):
     cell_sizes = search_space / math.sqrt(2)
     min_idx = 0
     max_idx = len(search_space) - 1
-
+    print(search_space)
+    print(cell_sizes)
     prev_min = None
     prev_max = None
 
@@ -120,17 +121,34 @@ def spatial_suppression(df, domain, min_radius=1.5, k=250, error_k=0.1):
         if min_idx == mid_idx or mid_idx == max_idx:
             warnings.warn('Unable to optimally solve.  Returning with {} points'.format(len(result)))
             process = False
+        try:
+          cell_size = cell_sizes[mid_idx]
+          n_x_cells = int(domain[0] / cell_size)
+          n_y_cells = int(domain[1] / cell_size)
+          grid = np.zeros((n_y_cells, n_x_cells), dtype=np.bool)
 
-        cell_size = cell_sizes[mid_idx]
-        n_x_cells = int(domain[0] / cell_size)
-        n_y_cells = int(domain[1] / cell_size)
-        grid = np.zeros((n_x_cells, n_y_cells), dtype=np.bool)
+        
+          # Assign all points to bins
+          print(min_idx, mid_idx, max_idx) 
+          print(cell_size)
+          x_edges = np.linspace(0, domain[0], n_x_cells)
+          y_edges = np.linspace(0, domain[1], n_y_cells)
+          print(n_x_cells)
+          print(n_y_cells)
 
-        # Assign all points to bins
-        x_edges = np.linspace(0, domain[0], n_x_cells)
-        y_edges = np.linspace(0, domain[1], n_y_cells)
-        xbins = np.digitize(df['x'], bins=x_edges)
-        ybins = np.digitize(df['y'], bins=y_edges)
+          print(x_edges)
+          print(y_edges)
+          xbins = np.digitize(df['x'], bins=x_edges)
+          ybins = np.digitize(df['y'], bins=y_edges)
+        except ValueError as e:
+           # The radius is too large
+            max_idx = mid_idx
+            if max_idx == 0:
+                warnings.warn('Unable to retrieve {} points. Consider reducing the amount of points you request(k)'.format(k))
+                process = False
+            if min_idx == max_idx:
+                process = False
+            continue
 
         # Convert bins to cells
         xbins -= 1
@@ -139,7 +157,7 @@ def spatial_suppression(df, domain, min_radius=1.5, k=250, error_k=0.1):
         for i, (idx, p) in enumerate(df.iterrows()):
             x_center = xbins[i]
             y_center = ybins[i]
-            cell = grid[y_center, x_center]
+            cell = grid[y_center, x_center]            
 
             if cell == False:
                 result.append(idx)
