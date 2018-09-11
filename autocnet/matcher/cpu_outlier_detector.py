@@ -129,6 +129,11 @@ def spatial_suppression(df, domain, min_radius=1.5, k=250, error_k=0.1):
         # Assign all points to bins
         x_edges = np.linspace(0, domain[0], n_x_cells)
         y_edges = np.linspace(0, domain[1], n_y_cells)
+
+        if not x_edges or not y_edges:
+            process = False
+            continue
+
         xbins = np.digitize(df['x'], bins=x_edges)
         ybins = np.digitize(df['y'], bins=y_edges)
 

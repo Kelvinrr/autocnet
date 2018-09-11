@@ -70,9 +70,10 @@ def match(edge, k=2, **kwargs):
             bd = b.descriptors
 
         # Load, train, and match
-        fl.add(ad, a['node_id'], index=aidx)
+        print(ad.astype('float32'))
+        fl.add(ad.astype('float32'), a['node_id'], index=aidx)
         fl.train()
-        matches = fl.query(bd, b['node_id'], k, index=bidx)
+        matches = fl.query(bd.astype('float32'), b['node_id'], k, index=bidx)
         _add_matches(matches)
         fl.clear()
 
@@ -81,7 +82,7 @@ def match(edge, k=2, **kwargs):
     # Get the correct descriptors
     aidx = kwargs.pop('aidx', None)
     bidx = kwargs.pop('bidx', None)
-
+    print(aidx, bidx)
     mono_matches(edge.source, edge.destination, aidx=aidx, bidx=bidx)
     # Swap the indices since mono_matches is generic and source/destin are
     # swapped

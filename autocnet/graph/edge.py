@@ -81,8 +81,8 @@ class Edge(dict, MutableMapping):
         """
         # Reset the edge masks because matching is happening (again)
         self.masks = pd.DataFrame()
-        kwargs['aidx'] = self.get_keypoints('source', overlap=True).index
-        kwargs['bidx'] = self.get_keypoints('destination', overlap=True).index
+        # kwargs['aidx'] = self.get_keypoints('source', overlap=True).index
+        # kwargs['bidx'] = self.get_keypoints('destination', overlap=True).index
         Edge._match(self, k=k, **kwargs)
 
     @staticmethod
