@@ -1,3 +1,4 @@
+import itertools
 import json
 
 from functools import reduce, singledispatch, update_wrapper
@@ -7,6 +8,41 @@ import pandas as pd
 import networkx as nx
 
 from osgeo import ogr
+
+def tile(array_size, tilesize=1000, overlap=500):
+    stepsize = tilesize - overlap
+    if stepsize < 0:
+        raise ValueError('Overlap can not be greater than tilesize.')
+    # Compute the tiles
+    if tilesize >= array_size[1]:
+        ytiles = [(0, array_size[1])]
+    else:
+        ystarts = range(0, array_size[1], stepsize)
+        ystops = range(tilesize, array_size[1], stepsize)
+        ytiles = list(zip(ystarts, ystops))
+        ytiles.append((ytiles[-1][0] + stepsize, array_size[1]))
+
+    if tilesize >= array_size[0]:
+        xtiles = [(0, array_size[0])]
+    else:
+        xstarts = range(0, array_size[0], stepsize)
+        xstops = range(tilesize, array_size[0], stepsize)
+        xtiles = list(zip(xstarts, xstops))
+        xtiles.append((xtiles[-1][0] + stepsize, array_size[0]))
+    tiles = itertools.product(xtiles, ytiles)
+
+    slices = []
+    for tile in tiles:
+        # xstart, ystart, xcount, ycount
+        xstart = tile[0][0]
+        ystart = tile[1][0]
+        xstop = tile[0][1]
+        ystop = tile[1][1]
+        pixels = [xstart, ystart,
+                  xstop - xstart,
+                  ystop - ystart]
+        slices.append(pixels)
+    return slices
 
 def compare_dicts(d, o):
     """
@@ -44,7 +80,7 @@ def compare_dicts(d, o):
             if not v.equals(o[k]):
                 return False
         elif isinstance(v, np.ndarray):
-            if not v.all() == o[k].all():
+            if not np.allclose(v, o[k]):
                 return False
         else:
             if k == '_geodata':
@@ -88,8 +124,9 @@ def normalize_vector(line):
     Examples
     --------
     >>> x = np.array([3, 1, 2])
-    >>> normalize_vector(x)
-    array([ 0.80178373,  0.26726124,  0.53452248])
+    >>> nv = normalize_vector(x)
+    >>> print(np.round(nv, 6))  # For doc test float percision
+    [0.801784 0.267261 0.534522]
     """
     if isinstance(line, pd.DataFrame):
         line = line.values
