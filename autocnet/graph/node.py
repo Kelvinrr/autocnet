@@ -71,7 +71,7 @@ class Node(dict, MutableMapping):
         if not hasattr(self, '_camera'):
             self._camera = None
         return self._camera
-    
+
     @camera.setter
     def camera(self, camera):
         self._camera = camera
@@ -329,16 +329,16 @@ class Node(dict, MutableMapping):
         concat_kps.drop_duplicates(inplace=True)
         # Removed duplicated and re-index the merged keypoints
 
-        # Update the descriptors to be the same size as the keypoints, maintaining alignment        
+        # Update the descriptors to be the same size as the keypoints, maintaining alignment
         if self.descriptors is not None:
             concat = np.concatenate((self.descriptors, new_descriptors))
         else:
             concat = new_descriptors
         new_descriptors = concat[concat_kps.index.values]
-        
+
         self.descriptors = new_descriptors
         self.keypoints = concat_kps.reset_index(drop=True)
-        
+
         lkps = len(self.keypoints)
 
         assert lkps == len(self.descriptors)
@@ -388,7 +388,7 @@ class Node(dict, MutableMapping):
         if len(self.keypoints) > 0:
             return True
 
-    def project_keypoints(self):   
+    def project_keypoints(self):
         if self.camera is None:
             # Without a camera, it is not possible to project
             warnings.warn('Unable to project points, no camera available.')
@@ -493,4 +493,4 @@ class Node(dict, MutableMapping):
 
         for x, y in coords:
             reproj.append(self.geodata.latlon_to_pixel(y, x))
-        return Polygon(reproj) 
+        return Polygon(reproj)

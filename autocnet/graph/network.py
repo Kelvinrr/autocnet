@@ -27,7 +27,13 @@ from autocnet.io import network as io_network
 from autocnet.vis.graph_view import plot_graph, cluster_plot
 from autocnet.control import control
 
+<<<<<<< Updated upstream
 #np.warnings.filterwarnings('ignore')
+=======
+from plio.io.io_controlnetwork import to_isis, write_filelist
+
+np.warnings.filterwarnings('ignore')
+>>>>>>> Stashed changes
 
 # The total number of pixels squared that can fit into the keys number of GB of RAM for SIFT.
 MAXSIZE = {0: None,
@@ -754,7 +760,7 @@ class CandidateGraph(nx.Graph):
         """
         Return a list of all full file PATHs in the CandidateGraph
         """
-        return [node['image_path'] for node in self.nodes]
+        return [node[1]['image_path'] for node in self.nodes_iter(data=True)]
 
     def save(self, filename):
         """
@@ -1120,11 +1126,6 @@ class CandidateGraph(nx.Graph):
             self, self.controlnetwork, **kwargs)
         return cc
 
-    def to_isis(self, outname, *args, **kwargs):
-        serials = self.serials()
-        files = self.files()
-        self.controlnetwork.to_isis(outname, serials, files, *args, **kwargs)
-
     def nodes_iter(self, data=False):
         for i, n in self.nodes.data('data'):
             if data:
@@ -1241,10 +1242,12 @@ class CandidateGraph(nx.Graph):
         """
         return self.controlnetwork.groupby('point_id').apply(lambda g: g if len(g) > 1 else None)
 
-    def to_isis(self, outname, serials, olist, *args, **kwargs):  # pragma: no cover
+    def to_isis(self, outname, *args, **kwargs):  # pragma: no cover
         """
         Write the control network out to the ISIS3 control network format.
         """
+        serials = self.serials()
+        files = self.files()
 
         if self.validate_points().any() == True:
             warnings.warn(
@@ -1255,9 +1258,10 @@ class CandidateGraph(nx.Graph):
         self.controlnetwork.x += self.controlnetwork.x_off
         self.controlnetwork.y += self.controlnetwork.y_off
 
-        to_isis(outname + '.net', self.controlnetwork.query('valid == True'),
+        to_isis(outname + '.net', self.controlnetwork,
                 serials, *args, **kwargs)
-        write_filelist(olist, outname + '.lis')
+
+        write_filelist(files, outname + '.lis')
 
         # Back out the subpixel shift
         self.controlnetwork.x -= self.controlnetwork.x_off

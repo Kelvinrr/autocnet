@@ -339,7 +339,10 @@ class Edge(dict, MutableMapping):
         _, mask = self.clean(clean_keys)
         s_keypoints, d_keypoints = self.get_match_coordinates(clean_keys=clean_keys)
         self.fundamental_matrix, fmask = fm.compute_fundamental_matrix(s_keypoints, d_keypoints, **kwargs)
+<<<<<<< Updated upstream
         
+=======
+>>>>>>> Stashed changes
 
         if isinstance(self.fundamental_matrix, np.ndarray):
             # Convert the truncated RANSAC mask back into a full length mask
