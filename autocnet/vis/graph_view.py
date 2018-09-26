@@ -194,8 +194,8 @@ def plot_edge_decomposition(edge, ax=None, clean_keys=[], image_space=100,
 
     return ax
 
-def plot_edge(edge, ax=None, clean_keys=[], image_space=100, downsampling=1,
-              scatter_kwargs={}, line_kwargs={}, image_kwargs={}):
+def plot_edge(edge, ax=None, clean_keys=[], image_space=100, downsampling=False,
+              scatter_kwargs={}, line_kwargs={}, image_kwargs={}, nodata=None):
     """
     Plot the correspondences for a given edge
 
@@ -241,20 +241,22 @@ def plot_edge(edge, ax=None, clean_keys=[], image_space=100, downsampling=1,
     ax.axis('off')
 
     # Image plotting
-    if isinstance(downsampling, bool):
-        downsample_source = edge.source['downsample_amount']
-    else:
-        downsample_source = downsampling
-    source_array = edge.source.get_array()
-    source_array = downsample(source_array, downsample_source)
 
-    if isinstance(downsampling, bool):
-        downsample_destin = edge.destination['downsample_amount']
-    else:
-        downsample_destin = downsampling
+    source_array = edge.source.get_array()
+    if nodata:
+        source_array[source_array == nodata] = np.nan
+
+    if isinstance(downsampling, int) and not isinstance(downsampling, bool):
+        source_array = downsample(source_array, downsampling)
+
     destination_array = edge.destination.get_array()
-    destination_array = downsample(destination_array, downsample_destin)
-    
+    if nodata:
+        destination_array[destination_array == nodata] = np.nan
+
+    if isinstance(downsampling, int) and not isinstance(downsampling, bool):
+        source_array = downsample(source_array, downsampling)
+
+
     s_shape = source_array.shape
     d_shape = destination_array.shape
 
