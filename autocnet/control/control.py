@@ -10,37 +10,6 @@ from autocnet.matcher import subpixel as sp
 from plio.io.io_controlnetwork import to_isis, write_filelist
 
 
-def subpixel_match(cg, cn, threshold=0.9, template_size=19, search_size=53, max_x_shift=1.0, max_y_shift=1.0, **kwargs):
-
-    def subpixel_group(group, threshold=0.9, template_size=19, search_size=53, max_x_shift=1.0, max_y_shift=1.0, **kwargs):
-        offs = []
-        for i, (idx, r) in enumerate(group.iterrows()):
-            if i == 0:
-                x = r.x
-                y = r.y
-                offs.append([0, 0, np.inf])
-                continue
-
-            e = r.edge
-            s_img = cg.edge[e[0]][e[1]].source.geodata
-            s_template = sp.clip_roi(s_img, (x, y), template_size)
-            # s_template = cv2.Canny(bytescale(s_template), 50,100) # Canny - bad idea
-            d_img = cg.edge[e[0]][e[1]].destination.geodata
-            d_search = sp.clip_roi(d_img, (r.x, r.y), search_size)
-            #d_search = cv2.Canny(bytescale(d_search), 50,100)
-
-            xoff, yoff, corr = sp.subpixel_offset(
-                s_template, d_search, **kwargs)
-            offs.append([xoff, yoff, corr])
-        df = pd.DataFrame(
-            offs, columns=['x_off', 'y_off', 'corr'], index=group.index)
-        return df
-    gps = cn.data.groupby('point_id').apply(subpixel_group, threshold=0.9, max_x_shift=5,
-                                            max_y_shift=5, template_size=template_size, search_size=search_size, **kwargs)
-    cn.data[['x_off', 'y_off', 'corr']] = gps.reset_index()[
-        ['x_off', 'y_off', 'corr']]
-
-
 def identify_potential_overlaps(cg, cn, overlap=True):
     """
     Identify those points that could have additional measures
@@ -67,7 +36,7 @@ def identify_potential_overlaps(cg, cn, overlap=True):
     candidate_cliques = []
     geoms = []
     idx = []
-    for i, p in cn.data.groupby('point_id'):
+    for i, p in cn.groupby('point_id'):
         # Which images are covered already.  This finds any connected cycles that
         #  a node is in (this can be more than one - an hourglass network for example)
         # Extract the fully connected subgraph for each covered image in order to
@@ -123,7 +92,3 @@ def identify_potential_overlaps(cg, cn, overlap=True):
         return candidate_cliques.query('overlap == True')['candidates']
     else:
         return candidate_cliques.candidates
-
-
-def deepen_correspondences(cg, cn):
-    pass

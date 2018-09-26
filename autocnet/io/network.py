@@ -76,10 +76,11 @@ def save(network, projectname):
                     ndarrays_to_write[k] = v
                     ndarrays_to_write[k+'_idx'] = v.index
                     ndarrays_to_write[k+'_columns'] = v.columns
-            # Handle the matches dataframe that is a property
-            ndarrays_to_write['matches'] = data.matches
-            ndarrays_to_write['matches_idx'] = data.matches.index
-            ndarrays_to_write['matches_columns'] = data.matches.columns
+            # Handle DataFrames that are properties
+            for k in ['_matches', '_masks', '_costs']:
+                ndarrays_to_write[k] = getattr(data, k, np.array([]))
+                ndarrays_to_write['{}_idx'.format(k)] = getattr(data, k, pd.DataFrame()).index
+                ndarrays_to_write['{}_columns'.format(k)] = getattr(data, k, pd.DataFrame()).columns
             np.savez('{}_{}.npz'.format(s, d),**ndarrays_to_write)
             pzip.write('{}_{}.npz'.format(s, d))
             os.remove('{}_{}.npz'.format(s, d))
@@ -152,8 +153,10 @@ def load(projectname):
                 edge[k] = v
             try:
                 nzf = np.load(BytesIO(pzip.read('{}_{}.npz'.format(s,d))))
-                edge.masks = pd.DataFrame(nzf['masks'], index=nzf['masks_idx'], columns=nzf['masks_columns'])
-                edge.matches = pd.DataFrame(nzf['matches'], index=nzf['matches_idx'], columns=nzf['matches_columns'])
+                for j in ['_matches', '_masks', '_costs']:
+                    setattr(edge, j, pd.DataFrame(nzf[j], 
+                                                  index=nzf['{}_idx'.format(j)], 
+                                                  columns=nzf['{}_columns'.format(j)]))
             except:
                 pass
             # Add a mock edge

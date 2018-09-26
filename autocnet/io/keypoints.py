@@ -120,7 +120,7 @@ def to_hdf(out_path, keypoints=None, descriptors=None, key=None):
     if descriptors is not None:
         # Strip the leading slash
         if outd[1:] in grps:
-            del hdf[outd] # Prep to replace
+            del hdf[outd] # pragma: no cover
 
         hdf.create_dataset(outd,
                         data=descriptors,
@@ -129,7 +129,7 @@ def to_hdf(out_path, keypoints=None, descriptors=None, key=None):
 
     if keypoints is not None:
         if outk[1:] in grps:
-            del hdf[outk]
+            del hdf[outk]  # pragma: no cover
 
         hdf.create_dataset(outk,
                         data=hdf.df_to_sarray(keypoints.reset_index()),
@@ -187,3 +187,30 @@ def to_npy(keypoints, descriptors, out_path):
              keypoints=keypoints,
              keypoints_idx=keypoints.index,
              keypoints_columns=keypoints.columns)
+
+def create_output_path(filename, outdir=None):
+    """
+    Given a filename for keypoints and descriptors, create an output
+    directory with _kps.h5 appended.
+
+    Parameters
+    ----------
+    filename : str
+               The filename or full path
+    outdir : str
+             An optional output path
+
+    Returns
+    -------
+    outh5 : str
+            Path of the output h5 file
+    """
+    image_name = os.path.basename(filename)                                    
+    image_path = os.path.dirname(filename)                                     
+                                                                                   
+    if outdir is None:                                                             
+        outh5 = os.path.join(image_path, image_name + '_kps.h5')                   
+    else:                                                                          
+        outh5 = os.path.join(outdir, image_name + '_kps.h5')                       
+                                                                                   
+    return outh5 

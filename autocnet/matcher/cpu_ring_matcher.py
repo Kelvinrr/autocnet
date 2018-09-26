@@ -63,6 +63,7 @@ def ransac_permute(ref_points, tar_points, tolerance_val, target_points):
     P. Sidiropoulos and J.-P. Muller, A systematic solution to multi-instrument co-registration of high-resolution planetary images to an orthorectified baseline, IEEE Transactions on Geoscience and Remote Sensing, 2017
     """
     n = len(ref_points)
+    # Build an n,n distance matrix to store pairwise point distances
     dist = np.zeros((n,n))
     for i in range(n):
         vr1 = ref_points[i]
@@ -83,12 +84,13 @@ def ransac_permute(ref_points, tar_points, tolerance_val, target_points):
 
             dist[i,j] = (dr[0]**2 + dr[1]**2)**0.5 / (dt[0]**2+dt[1]**2)**0.5
             dist[j,i] = dist[i,j]
+    # Compute min/max bounds for the tolerance
     minlim = 1 - tolerance_val
     maxlim = 1 + tolerance_val
 
     # Determine which points are within the tolerance
-    q1 = dist > minlim
-    q2 = dist < maxlim
+    q1 = dist >= minlim
+    q2 = dist <= maxlim
     q = (q1*q2).astype(np.int)
     # How many points are within the tolerance?
     s = np.sum(q, axis=1)
@@ -99,7 +101,7 @@ def ransac_permute(ref_points, tar_points, tolerance_val, target_points):
             for j in range(i):
                 m[i,j] = q[i].dot(q[j])
                 m[j,i] = m[i,j]
-        qm = m > target_points
+        qm = m >= target_points
         sqm = np.sum(qm, axis=-1)
         f = np.argmax(sqm)
         f2 = np.nonzero(qm[f])
@@ -153,7 +155,9 @@ def sift_match(a, b, thresh=1.5):
         return best
     return
 
-def ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_radius=4000, max_radius=40000, target_points=15, tolerance_val=0.02):
+def ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_radius=4000,
+               max_radius=40000, target_points=15, tolerance_val=0.02,
+               iteration_break_point=200):
     """
     Apply the University College London ring matching technique that seeks to match
     target feats to a number of reference features.
@@ -216,26 +220,20 @@ def ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_radius=4000, max_r
     ref_xmym = ref_feats[:,2:4]
     tar_xy = tar_feats[:,:2]
     tar_xmym = tar_feats[:,2:4]
-
+    
     # Boolean mask for those reference points that have already been matched
     ref_mask = np.ones(len(ref_xy), dtype=bool)
-
+ 
     # Counters
     numr = len(ref_feats)
-
-    # Number of radial rings
-    rad_num = int(max_radius / ring_radius)
-
-    # Number of points per ring vector
-    points_num = np.zeros(rad_num, dtype=np.int)
-
-    # Initial array for holding candidate points - this is grown dynamically below
+    rad_num = int(max_radius / ring_radius) # Number of radial rings
+    points_num = np.zeros(rad_num, dtype=np.int)  # Number of points per ring vector
+    metr = 1
+    
+    # Initial array for holding candidate points
     p = np.zeros((target_points, 4 * rad_num))
     p_idx = np.zeros((target_points, 2 * rad_num), dtype=np.int)
 
-    # Increment counter for determining how frequently to assess rings
-    metr = 1
-    # Main processing
     while ref_mask.any():
         # Grab a random reference point
         r = np.random.choice(np.arange(numr)[ref_mask])
@@ -244,36 +242,28 @@ def ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_radius=4000, max_r
         current_ref_xmym = ref_xmym[r]
         # Compute the euclidean distance between the reference point and all targets
         d = np.linalg.norm(current_ref_xmym - tar_xmym, axis=1)
-
         # For each point, independently match to a point in a given ring
         for i in range(rad_num):
             # The number of points that are within a given ring
-            z = (d > i * ring_radius) * (d < (i+1) * ring_radius)
+            z = points_in_ring(d, i*ring_radius, (i+1) * ring_radius)
             # If we have enough points, run the sift matcher and select the best point, updating p
-            if np.sum(z) > target_points:
+            if np.sum(z) >= target_points:
                 # All candidate points that are in the ring
                 current_tar_descs = tar_desc[z]  # This slicing uses ~25% of processing timr
                 current_tar_xys = tar_xy[z]
                 z_idx = np.where(z == True)[0]
-                #assert sum(z) == current_tar_descs.shape[0] == current_tar_xys.shape[0]
-
                 # Sift Match
                 match = sift_match(current_ref_desc, current_tar_descs, thresh=1.5)  # The remaining 75% of processing time.
-
                 if match is not None:
                     if points_num[i] == p.shape[0]:
-                        # Inefficient, but creates a dynamically allocated array the larger array_step is, the less inefficient this should be
-                        p_append = np.zeros((target_points, 4*rad_num))
-                        p = np.vstack((p, p_append))
-                        p_idx_append = np.zeros((target_points,2*rad_num), dtype=np.int)
-                        p_idx = np.vstack((p_idx, p_idx_append))
+                        p = dynamically_grow_array(p, target_points)
+                        p_idx = dynamically_grow_array(p_idx, target_points, dtype=np.int)
                     p[points_num[i], 4*i:4*i+4] = [current_ref_xy[0], current_ref_xy[1], current_tar_xys[match][0], current_tar_xys[match][1]]
                     # Set the id of the point
                     p_idx[points_num[i], 2*i:2*i+2] = [r, z_idx[match]]
                     points_num[i] += 1
-
-        #For every 200 reference points that are potentially matched
-        if metr % 200 == 0:
+        
+        if (metr % iteration_break_point == 0) or (np.sum(ref_mask) == 0):
             max_cons = 3
             # Find all candidate rings
             candidate_rings = points_num >= target_points
@@ -299,6 +289,52 @@ def ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_radius=4000, max_r
         ref_mask[r] = False
         metr += 1
     return None, None, None, 'Exhausted'
+
+def points_in_ring(distance_vector, inner_radius, outer_radius):
+    """
+    Returns the indices of all points within a given distance from
+    a distance vector. The vector is assumed to be 1d.
+
+    Parameters
+    ----------
+    distance_vector : ndarray
+                      (n,1) array of distances between a point and a set of points
+    inner_radius : float
+                   The lower threshold for the ring
+    outer_radius : float
+                   The outer threshold for the ring
+
+    Returns
+    -------
+     : ndarray
+       (n,1) array of booleans where all correspondences inside of the array are True
+    """
+    return (distance_vector >= inner_radius) * (distance_vector <= outer_radius)
+
+def dynamically_grow_array(array, m, dtype=None):
+    """
+    Given an array, dynamically grow the array vertically with an m,n array of zeros
+
+    Parameters
+    ----------
+    array : ndarray
+            The array to be grown
+    m : int
+        The number of new rows to add
+
+    dtype : obj
+            A numpy data type that is used for the new entries. A 
+            dynamically grown array will upcast to the most complex
+            data type.
+    Returns
+    -------
+    array : ndarray
+            The expanded array
+    """
+    array_append = np.zeros((m, array.shape[1]), dtype=dtype)
+    array = np.vstack((array, array_append))
+    return array
+
 
 def directed_ring_match(ref_feats, tar_feats, ref_desc, tar_desc, ring_min, ring_max, target_points=15, tolerance_value=0.02):
     """

@@ -1,26 +1,24 @@
 name: autocnet
 channels:
-  - usgs-astrogeology
   - conda-forge
-  - jlaura
+  - usgs-astrogeology
   - menpo
 dependencies:
   - python=3
-  - cython
-  - matplotlib
-  - dill
-  - jupyter
-  - networkx
-  - numexpr
-  - pandas
-  - geopandas
-  - shapely
-  - pyyaml
+  - numpy
   - scipy
-  - sqlalchemy
+  - scikit-image
+  - opencv
+  - vlfeat
+  - cyvlfeat
+  - csmapi
+  - networkx
+  - pillow
   - plio
-  - pip:
-    - pillow
-    - pvl
-    - libpysal
-    - protobuf
+  - ncurses
+  - geopandas
+  - imageio
+  - pytest
+  - pytest-cov
+  - coveralls
+  - anaconda-client

@@ -1,6 +1,6 @@
 package:
   name: autocnet
-  version: 0.2.2
+  version: 0.2.5
   
 channels:
   - conda-forge
@@ -14,36 +14,34 @@ source:
 requirements:
   build:
     - python=3
-    - vlfeat
-    - cyvlfeat
-    - pillow
-    - scipy
-    - networkx
-    - numexpr
-    - cython
-    - matplotlib
+    - numpy                                                                          
+    - scipy                                                                          
+    - scikit-image                                                                   
+    - opencv                                                                         
+    - vlfeat                                                                         
+    - cyvlfeat                                                                       
+    - csmapi                                                                         
+    - networkx                                                                       
+    - pillow                                                                         
+    - plio                                                                           
+    - ncurses                                                                        
     - geopandas
-    - opencv
-    - numpy
-    - plio
-    - gdal
+    - imageio
   run:
     - python=3
-    - vlfeat
-    - cyvlfeat
-    - pillow
-    - scipy
-    - networkx
-    - numexpr
-    - cython
-    - matplotlib
+    - numpy                                                                          
+    - scipy                                                                          
+    - scikit-image                                                                   
+    - opencv                                                                         
+    - vlfeat                                                                         
+    - cyvlfeat                                                                       
+    - csmapi                                                                         
+    - networkx                                                                       
+    - pillow                                                                         
+    - plio                                                                           
+    - ncurses                                                                        
     - geopandas
-    - opencv
-    - numpy
-    - plio
-    - gdal
-    - scikit-image
-
+    - imageio
 test:
   imports:
     - autocnet

@@ -3,11 +3,12 @@ import itertools
 import os
 import warnings
 
+from csmapi import csmapi
 import numpy as np
 import pandas as pd
 from plio.io.io_gdal import GeoDataset
 from plio.io.isis_serial_number import generate_serial_number
-from scipy.misc import bytescale, imresize
+from skimage.transform import resize
 from shapely.geometry import Polygon
 from shapely import wkt
 
@@ -15,7 +16,6 @@ from autocnet.cg import cg
 
 from autocnet.io import keypoints as io_keypoints
 
-from autocnet.matcher.add_depth import deepen_correspondences
 from autocnet.matcher import cpu_extractor as fe
 from autocnet.matcher import cpu_outlier_detector as od
 from autocnet.cg.cg import convex_hull_ratio
@@ -210,7 +210,7 @@ class Node(dict, MutableMapping):
 
         max_x = self.geodata.raster_size[0]
         max_y = self.geodata.raster_size[1]
-
+        print(max_x, max_y)
         total_area = max_x * max_y
 
         return hull_area / total_area
@@ -226,7 +226,7 @@ class Node(dict, MutableMapping):
         """
 
         array = self.geodata.read_array(band=band)
-        return bytescale(array)
+        return utils.bytescale(array)
 
     def get_array(self, band=1, **kwargs):
         """
@@ -283,8 +283,7 @@ class Node(dict, MutableMapping):
             keypoints = self.keypoints.loc[index][['x', 'y']]
 
         if homogeneous:
-            keypoints['homogeneous'] = 1
-
+            keypoints = keypoints.assign(homogeneous = 1)
         return keypoints
 
     def get_raw_keypoint_coordinates(self, index=slice(None)):
@@ -316,15 +315,6 @@ class Node(dict, MutableMapping):
         pass
 
     def extract_features(self, array, xystart=[], camera=None, *args, **kwargs):
-        arraysize = array.shape[0] * array.shape[1]
-
-        try:
-            maxsize = self.maxsize[0] * self.maxsize[1]
-        except:
-            maxsize = np.inf
-
-        if arraysize > maxsize:
-            warnings.warn('Node: {}. Maximum feature extraction array size is {}.  Maximum array size is {}. Please use tiling or downsampling.'.format(self['node_id'], maxsize, arraysize))
 
         new_keypoints, new_descriptors = Node._extract_features(array, *args, **kwargs)
         count = len(self.keypoints)
@@ -335,22 +325,22 @@ class Node(dict, MutableMapping):
             new_keypoints['y'] += xystart[1]
 
         concat_kps = pd.concat((self.keypoints, new_keypoints))
-        descriptor_mask = concat_kps.duplicated(keep='last')
         concat_kps.reset_index(inplace=True, drop=True)
         concat_kps.drop_duplicates(inplace=True)
-        #descriptor_mask = descriptor_mask[count:]        
         # Removed duplicated and re-index the merged keypoints
-        
-        
+
+        # Update the descriptors to be the same size as the keypoints, maintaining alignment        
         if self.descriptors is not None:
             concat = np.concatenate((self.descriptors, new_descriptors))
-            new_descriptors = concat[concat_kps.index]
+        else:
+            concat = new_descriptors
+        new_descriptors = concat[concat_kps.index.values]
         
         self.descriptors = new_descriptors
-        self.keypoints = concat_kps
+        self.keypoints = concat_kps.reset_index(drop=True)
         
         lkps = len(self.keypoints)
-        print(lkps, len(self.descriptors))
+
         assert lkps == len(self.descriptors)
 
         if lkps > 0:
@@ -363,8 +353,7 @@ class Node(dict, MutableMapping):
         pass
 
     def extract_features_with_downsampling(self, downsample_amount,
-                                           array_read_args={},
-                                           interp='lanczos', *args, **kwargs):
+                                           array_read_args={}, *args, **kwargs):
         """
         Extract interest points for the this node (image) by first downsampling,
         then applying the extractor, and then upsampling the results backin to
@@ -379,7 +368,7 @@ class Node(dict, MutableMapping):
         total_size = array_size[0] * array_size[1]
         shape = (int(array_size[0] / downsample_amount),
                  int(array_size[1] / downsample_amount))
-        array = imresize(self.geodata.read_array(**array_read_args), shape, interp=interp)
+        array = resize(self.geodata.read_array(**array_read_args), shape, preserve_range=True)
         self.extract_features(array, *args, **kwargs)
 
         self.keypoints['x'] *= downsample_amount
@@ -407,8 +396,10 @@ class Node(dict, MutableMapping):
         # Project the sift keypoints to the ground
         def func(row, args):
             camera = args[0]
-            gnd = getattr(camera, 'imageToGround')(row[1], row[0], 0)
-            return gnd
+            imagecoord = csmapi.ImageCoord(float(row[1]), float(row[0]))
+            # An elevation at the ellipsoid is plenty accurate for this work
+            gnd = getattr(camera, 'imageToGround')(imagecoord, 0)
+            return [gnd.x, gnd.y, gnd.z]
         feats = self.keypoints[['x', 'y']].values
         gnd = np.apply_along_axis(func, 1, feats, args=(self.camera, ))
         gnd = pd.DataFrame(gnd, columns=['xm', 'ym', 'zm'], index=self.keypoints.index)
@@ -502,4 +493,4 @@ class Node(dict, MutableMapping):
 
         for x, y in coords:
             reproj.append(self.geodata.latlon_to_pixel(y, x))
-        return Polygon(reproj)
+        return Polygon(reproj) 

@@ -17,12 +17,12 @@ from autocnet.matcher import subpixel as sp
 from autocnet.matcher import cpu_ring_matcher
 from autocnet.transformation import fundamental_matrix as fm
 from autocnet.transformation import homography as hm
-from autocnet.vis.graph_view import plot_edge, plot_node, plot_edge_decomposition
+from autocnet.transformation import spatial
+from autocnet.vis.graph_view import plot_edge, plot_node, plot_edge_decomposition, plot_matches
 from autocnet.cg import cg
 
 from plio.io.io_gdal import GeoDataset
-from plio.spatial.transformations import reproject
-
+from csmapi import csmapi
 
 class Edge(dict, MutableMapping):
     """
@@ -47,7 +47,6 @@ class Edge(dict, MutableMapping):
         self.destination = destination
         self['homography'] = None
         self['fundamental_matrix'] = None
-        self.masks = pd.DataFrame()
         self.subpixel_matches = pd.DataFrame()
         self._matches = pd.DataFrame()
         self['weights'] = {}
@@ -71,11 +70,24 @@ class Edge(dict, MutableMapping):
 
 
     @property
+    def masks(self):
+        if not hasattr(self, '_masks'):
+            self._masks = pd.DataFrame()
+        return self._masks
+
+    @masks.setter
+    def masks(self, value):
+        if isinstance(value, pd.DataFrame):
+            self._masks = value
+        else:
+            raise(TypeError)
+
+    @property
     def matches(self):
         if not hasattr(self, '_matches'):
             self._matches = pd.DataFrame()
         return self._matches
-
+    
     @matches.setter
     def matches(self, value):
         if isinstance(value, pd.DataFrame):
@@ -85,7 +97,7 @@ class Edge(dict, MutableMapping):
                 self.costs = pd.DataFrame(index=value.index)
         else:
             raise(TypeError)
-
+    
     @property
     def costs(self):
         if not hasattr(self, '_costs'):
@@ -177,7 +189,7 @@ class Edge(dict, MutableMapping):
                                                  'source_idx',
                                                  'destination',
                                                  'destination_idx']).astype(np.float32)
-
+        
         matches = matches.drop_duplicates()
 
         self.matches = matches
@@ -189,12 +201,14 @@ class Edge(dict, MutableMapping):
         access to x,y easier as a join on the keypoints is not requires.
         """
         skps = self.get_keypoints(self.source, index=self.matches.source_idx)
+        skps.reindex(self.matches['source_idx'])
+        self.matches['source_x'] = skps.values[:,0]
+        self.matches['source_y'] = skps.values[:,1]
         dkps = self.get_keypoints(self.destination, index=self.matches.destination_idx)
-        self.matches['source_x'] = skps.x.values
-        self.matches['source_y'] = skps.y.values
-        self.matches['destination_x'] = dkps.x.values
-        self.matches['destination_y'] = dkps.y.values
-
+        dkps.reindex(self.matches['destination_idx'])
+        self.matches['destination_x'] = dkps.values[:,0]
+        self.matches['destination_y'] = dkps.values[:,1]
+        
     def project_matches(self, semimajor, semiminor, on='source', srid=None):
         """
         Project matches.
@@ -210,14 +224,16 @@ class Edge(dict, MutableMapping):
         if camera is None:
             warnings.warn('Unable to project matches without a sensor model.')
             return
-
+        
         matches = self.matches
-
+        
         gnd = np.empty((len(coords), 3))
         # Project the points to the surface and reproject into latlon space
         for i in range(gnd.shape[0]):
-            gnd[i] = camera.imageToGround(coords[i][0], coords[i][1], 0)
-        lon, lat, alt = reproject(gnd.T, semimajor, semiminor,
+            ic = csmapi.ImageCoord(coords[i][0], coords[i][1])
+            ground = camera.imageToGround(ic, 0)
+            gnd[i] = [ground.x, ground.y, ground.z]
+        lon, lat, alt = spatial.reproject(gnd.T, semimajor, semiminor,
                                     'geocent', 'latlon')
         if srid:
             geoms = []
@@ -226,7 +242,7 @@ class Edge(dict, MutableMapping):
                                                                      coord[1],
                                                                      coord[2]))
             matches['geom'] = geoms
-
+        
         matches['lat'] = lat
         matches['lon'] = lon
         self.matches = matches
@@ -299,7 +315,7 @@ class Edge(dict, MutableMapping):
         node = node.lower()
         node = getattr(self, node)
         return self.get_keypoints(node, index=index, homogeneous=homogeneous, overlap=overlap)
-
+   
     def compute_fundamental_matrix(self, clean_keys=[], maskname='fundamental', **kwargs):
         """
         Estimate the fundamental matrix (F) using the correspondences tagged to this
@@ -323,8 +339,7 @@ class Edge(dict, MutableMapping):
         _, mask = self.clean(clean_keys)
         s_keypoints, d_keypoints = self.get_match_coordinates(clean_keys=clean_keys)
         self.fundamental_matrix, fmask = fm.compute_fundamental_matrix(s_keypoints, d_keypoints, **kwargs)
-
-        print(fmask)
+        
 
         if isinstance(self.fundamental_matrix, np.ndarray):
             # Convert the truncated RANSAC mask back into a full length mask
@@ -413,18 +428,13 @@ class Edge(dict, MutableMapping):
                      for subpixel accuracy
 
         template_size : int
-                        The size of the template in pixels, must be odd
+                        The size of the template in pixels, must be odd. If using phase, 
+                        only the template size is used.
 
         search_size : int
-                      The size of the search
+                      The size of the search area. When method='template', this size should
+                      be >= the template size
 
-        max_x_shift : float
-                      The maximum (positive) value that a pixel can shift in the x direction
-                      without being considered an outlier
-
-        max_y_shift : float
-                      The maximum (positive) value that a pixel can shift in the y direction
-                      without being considered an outlier
         """
         # Build up a composite mask from all of the user specified masks
         matches, mask = self.clean(clean_keys)
@@ -435,48 +445,48 @@ class Edge(dict, MutableMapping):
 
         # Determine which algorithm is going ot be used.
         if method == 'phase':
-            func = sp.subpixel_phase
-            shifts_x, shifts_y, strengths, new_x, new_y = sp._prep_subpixel(len(matches), 2)
+            func = sp.iterative_phase
+            nstrengths = 2
         elif method == 'template':
             func = sp.subpixel_template
-            shifts_x, shifts_y, strengths, new_x, new_y = sp._prep_subpixel(len(matches), 1)
+            nstrengths = 1
+        shifts_x, shifts_y, strengths, new_x, new_y = sp._prep_subpixel(len(matches), nstrengths)
 
         # for each edge, calculate this for each keypoint pair
         for i, (idx, row) in enumerate(matches.iterrows()):
             s_idx = int(row['source_idx'])
             d_idx = int(row['destination_idx'])
 
-            s_keypoint = self.source.get_keypoint_coordinates([s_idx])
-            d_keypoint = self.destination.get_keypoint_coordinates([d_idx])
+            if 'source_x' in row.index:
+                sx = row.source_x
+                sy = row.source_y
+            else:
+                s_keypoint = self.source.get_keypoint_coordinates([s_idx])
+                sx = s_keypoint.x
+                sy = s_keypoint.y
+    
+            if 'destination_x' in row.index:
+                dx = row.destination_x
+                dy = row.destination_y
+            else:
+                d_keypoint = self.destination.get_keypoint_coordinates([d_idx])
+                dx = d_keypoint.x
+                dy = d_keypoint.y
 
-            s_template, sx, sy = sp.clip_roi(s_img, s_keypoint.x, s_keypoint.y,
-                                     size_x=template_size, size_y=template_size)
-            d_search, dx, dy = sp.clip_roi(d_img, d_keypoint.x, d_keypoint.y,
-                                   size_x=search_size, size_y=search_size)
+            if method == 'phase':
+                res = sp.iterative_phase(sx, sy, dx, dy, s_img, d_img, size=template_size, **kwargs)
+                if res[0]:
+                    new_x[i] = res[0]
+                    new_y[i] = res[1]
+                    strengths[i] = res[2]
+            elif method == 'template':
+                new_x[i], new_y[i], strengths[i] = sp.subpixel_template(sx, sy, dx, dy, s_img, d_img,
+                                                                     search_size=search_size, 
+                                                                     template_size=template_size, **kwargs)
 
-            # Now check to see if these are the same size.
-            if method == 'phase' and (s_template.shape != d_search.shape):
-                s_size = s_template.shape
-                d_size = d_search.shape
-                updated_size = int(min(s_size + d_size) / 2)
-                s_template, sx, sy = sp.clip_roi(s_img, s_keypoint.x, s_keypoint.y,
-                                     size_x=updated_size, size_y=updated_size)
-                d_search, dx, dy = sp.clip_roi(d_img, d_keypoint.x, d_keypoint.y,
-                                    size_x=updated_size, size_y=updated_size)
-
-            shift_x, shift_y, metrics = func(s_template, d_search, **kwargs)
-
-            # ROIs and clipping all work using whole pixels. The clip_roi func returns
-            # the subpixel components that are lost when converting to whole pixels
-            # reapply those here.
-            shift_x += dx
-            shift_y += dy
-
-            shifts_x[i] = shift_x
-            shifts_y[i] = shift_y
-            new_x[i] = d_keypoint.x - shift_x
-            new_y[i] = d_keypoint.y - shift_y
-            strengths[i] = metrics
+            # Capture the shifts
+            shifts_x[i] = new_x[i] - dx
+            shifts_y[i] = new_y[i] - dy
 
         self.matches.loc[mask, 'shift_x'] = shifts_x
         self.matches.loc[mask, 'shift_y'] = shifts_y
@@ -484,13 +494,13 @@ class Edge(dict, MutableMapping):
         self.matches.loc[mask, 'destination_y'] = new_y
 
         if method == 'phase':
-            self.costs.loc[mask, 'phase'] = [i[0] for i in strengths]
-            self.costs.loc[mask, 'rmse'] = [i[1] for i in strengths]
+            self.costs.loc[mask, 'phase_diff'] = strengths[:,0]
+            self.costs.loc[mask, 'rmse'] = strengths[:,1]
         elif method == 'template':
-            self.costs.loc[mask, 'correlation'] = strengths
+            self.costs.loc[mask, 'correlation'] = strengths[:,0]
+ 
 
-
-    def suppress(self, suppression_func=spf.distance, clean_keys=[], maskname='suppression', **kwargs):
+    def suppress(self, suppression_func=spf.correlation, clean_keys=[], maskname='suppression', **kwargs):
         """
         Apply a disc based suppression algorithm to get a good spatial
         distribution of high quality points, where the user defines some
@@ -530,6 +540,12 @@ class Edge(dict, MutableMapping):
         matches, mask = self.clean(clean_keys=clean_keys)
         indices = pd.Index(matches['source_idx'].values)
         return plot_node(self.source, index_mask=indices, **kwargs)
+
+    def plot_matches(self, clean_keys=[], **kwargs):  # pragme: no cover
+        matches, mask = self.clean(clean_keys=clean_keys)
+        sourcegd = self.source.geodata
+        destingd = self.destination.geodata
+        return plot_matches(matches, sourcegd, destingd, **kwargs)
 
     def plot_destination(self, ax=None, clean_keys=[], **kwargs):  # pragma: no cover
         matches, mask = self.clean(clean_keys=clean_keys)
@@ -576,7 +592,8 @@ class Edge(dict, MutableMapping):
         else:
             mask = pd.Series(True, self.matches.index)
 
-        return self.matches[mask], mask
+        m = mask[mask==True]
+        return self.matches.loc[m.index], mask
 
     def overlap(self):
         """
@@ -679,18 +696,16 @@ class Edge(dict, MutableMapping):
 
     def get_match_coordinates(self, clean_keys=[]):
         matches = self.get_matches(clean_keys=clean_keys)
-        skps = matches[['source_x', 'source_y']]
-        dkps = matches[['destination_x', 'destination_y']]
+        skps = matches[['source_x', 'source_y']].astype(np.float)
+        dkps = matches[['destination_x', 'destination_y']].astype(np.float)
 
         return skps, dkps
 
     def get_matches(self, clean_keys=[]): # pragma: no cover
         if self.matches.empty:
             return pd.DataFrame()
-
         self.add_coordinates_to_matches()
         matches, _ = self.clean(clean_keys=clean_keys)
         skps = matches[['source_x', 'source_y']]
         dkps = matches[['destination_x', 'destination_y']]
-
         return matches
