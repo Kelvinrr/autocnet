@@ -27,13 +27,9 @@ from autocnet.io import network as io_network
 from autocnet.vis.graph_view import plot_graph, cluster_plot
 from autocnet.control import control
 
-<<<<<<< Updated upstream
-#np.warnings.filterwarnings('ignore')
-=======
 from plio.io.io_controlnetwork import to_isis, write_filelist
 
-np.warnings.filterwarnings('ignore')
->>>>>>> Stashed changes
+#np.warnings.filterwarnings('ignore')
 
 # The total number of pixels squared that can fit into the keys number of GB of RAM for SIFT.
 MAXSIZE = {0: None,
@@ -760,7 +756,7 @@ class CandidateGraph(nx.Graph):
         """
         Return a list of all full file PATHs in the CandidateGraph
         """
-        return [node[1]['image_path'] for node in self.nodes_iter(data=True)]
+        return [node[1]['data']['image_path'] for node in self.nodes(data=True)]
 
     def save(self, filename):
         """
@@ -1274,4 +1270,3 @@ class CandidateGraph(nx.Graph):
         http://grail.cs.washington.edu/projects/bal/
         """
         pass
-
