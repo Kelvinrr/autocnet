@@ -13,37 +13,73 @@ source:
 
 requirements:
   build:
-    - python=3
-    - numpy                                                                          
-    - scipy                                                                          
-    - scikit-image                                                                   
-    - opencv                                                                         
-    - vlfeat                                                                         
-    - cyvlfeat                                                                       
-    - csmapi                                                                         
-    - networkx                                                                       
-    - pillow                                                                         
-    - plio                                                                           
-    - ncurses                                                                        
-    - geopandas
-    - imageio
-  run:
-    - python=3
-    - numpy                                                                          
-    - scipy                                                                          
-    - scikit-image                                                                   
-    - opencv                                                                         
-    - vlfeat                                                                         
-    - cyvlfeat                                                                       
-    - csmapi                                                                         
-    - networkx                                                                       
-    - pillow                                                                         
-    - plio                                                                           
-    - ncurses                                                                        
-    - geopandas
-    - imageio
-    - pysis
+    - python>=3
+    - coveralls
+    - csmapi
+    - cyvlfeat
     - dill
+    - geoalchemy2
+    - geopandas
+    - imageio
+    - ipykernel
+    - jupyter
+    - knoten
+    - ncurses
+    - networkx
+    - numpy>=1.18
+    - opencv<=3.5
+    - pillow
+    - pip
+    - redis
+    - plio>=1.1.0
+    - plurmy
+    - psycopg2
+    - pyproj
+    - pytest
+    - pytest-cov
+    - pysis
+    - scikit-image
+    - scipy<=1.2.1
+    - shapely
+    - sqlalchemy
+    - sqlalchemy-utils
+    - usgscsm
+    - vlfeat
+    - libwebp-base
+  run:
+    - python>=3
+    - redis
+    - coveralls
+    - csmapi
+    - cyvlfeat
+    - dill
+    - geoalchemy2
+    - geopandas
+    - imageio
+    - ipykernel
+    - jupyter
+    - knoten
+    - ncurses
+    - networkx
+    - numpy>=1.18
+    - opencv<=3.5
+    - pillow
+    - pip
+    - plio>=1.1.0
+    - plurmy
+    - psycopg2
+    - pyproj
+    - pytest
+    - pytest-cov
+    - pysis
+    - scikit-image
+    - scipy<=1.2.1
+    - shapely
+    - sqlalchemy
+    - sqlalchemy-utils
+    - usgscsm
+    - vlfeat
+    - libwebp-base 
 test:
   imports:
     - autocnet
