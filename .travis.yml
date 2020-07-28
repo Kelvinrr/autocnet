@@ -36,12 +36,12 @@ addons:
 before_install:
   # Create the template database that is used to instantiate the test DB 
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      psql -c 'create database template_postgis;' -U postgres
-      psql template_postgis -U postgres -c 'create extension postgis'
-      psql template_postgis -c 'create extension postgis_topology'
-      psql -d template_postgis -c 'GRANT ALL ON geometry_columns TO PUBLIC;'
-      psql -d template_postgis -c 'GRANT ALL ON geography_columns TO PUBLIC;'
-      psql -d template_postgis -c 'GRANT ALL ON spatial_ref_sys TO PUBLIC;'
+      psql -c 'create database template_postgis;' -U postgres;
+      psql template_postgis -U postgres -c 'create extension postgis';
+      psql template_postgis -c 'create extension postgis_topology';
+      psql -d template_postgis -c 'GRANT ALL ON geometry_columns TO PUBLIC;';
+      psql -d template_postgis -c 'GRANT ALL ON geography_columns TO PUBLIC;';
+      psql -d template_postgis -c 'GRANT ALL ON spatial_ref_sys TO PUBLIC;';
     fi
 
 install:
