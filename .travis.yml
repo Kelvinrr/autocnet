@@ -6,6 +6,10 @@ branches:
     - dev
     - testing
 
+jobs:
+  allow_failures:
+    - os: osx
+
 matrix:
   include:
     - os: linux
@@ -20,8 +24,7 @@ matrix:
 # Setup a postgresql instance w/postgis
 services:
   - postgresql
-  on: 
-    os: linux
+
 addons:
   postgresql: 9.6
   apt:
