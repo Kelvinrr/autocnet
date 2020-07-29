@@ -10,7 +10,7 @@ from autocnet.graph.network import NetworkCandidateGraph
 from unittest.mock import patch, PropertyMock, MagicMock
 
 if sys.platform.startswith("darwin"):
-    pytest.skip("skipping DB tests for MacOS", allow_modu
+    pytest.skip("skipping DB tests for MacOS", allow_module_level=True)
 
 @pytest.fixture()
 def cnet():
