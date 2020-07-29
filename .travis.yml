@@ -25,8 +25,6 @@ matrix:
 services:
   - docker
 
-env:
-  - DOCKER_COMPOSE_VERSION=1.26.2       
     #addons:
       #  postgresql: 9.6
       #  apt:
@@ -39,7 +37,7 @@ env:
 before_install:
   # Create the template database that is used to instantiate the test DB 
   - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.26.2/docker-compose-`uname -s`-`uname -m` > docker-compose
   - ls docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
