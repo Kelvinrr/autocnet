@@ -26,8 +26,7 @@ services:
   - docker
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.25.2
-  - AUTOCNET_SERVER_DB=/var/lib/postgresql/data
+  - DOCKER_COMPOSE_VERSION=1.25.2 AUTOCNET_SERVER_DB=/var/lib/postgresql/data
       #addons:
       #  postgresql: 9.6
       #  apt:
