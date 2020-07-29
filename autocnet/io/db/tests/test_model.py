@@ -12,6 +12,9 @@ from autocnet.graph.network import NetworkCandidateGraph
 
 from shapely.geometry import MultiPolygon, Polygon, Point
 
+if sys.platform.startswith("darwin"):
+    pytest.skip("skipping DB tests for MacOS", allow_module_level=True)
+
 @pytest.fixture
 def session(tables, request, ncg):
     session = ncg.Session()
