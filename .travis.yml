@@ -42,7 +42,6 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
   - cd services 
   - export AUTOCNET_SERVER_DB=/var/lib/postgresql/data
-  - docker network create traefik-public
   - docker-compose up -d db
     # - cat localhost:5432:template_postgis:user:password > ~/.pgpass
     # - psql --host localhost --port 5432 -c 'create database template_postgis;' -U user;
