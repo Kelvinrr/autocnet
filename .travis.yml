@@ -26,7 +26,7 @@ services:
   - docker
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.25.2       
+  - DOCKER_COMPOSE_VERSION=1.26.2       
     #addons:
       #  postgresql: 9.6
       #  apt:
