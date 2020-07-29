@@ -37,7 +37,7 @@ services:
 before_install:
   # Create the template database that is used to instantiate the test DB 
   - cd services 
-  - docker-compose run db -d
+  - docker-compose up -d db
     # - cat localhost:5432:template_postgis:user:password > ~/.pgpass
     # - psql --host localhost --port 5432 -c 'create database template_postgis;' -U user;
     # - psql --host localhost --port 5432 -d template_postgis -U user -c 'create extension postgis';
