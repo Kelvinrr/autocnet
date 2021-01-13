@@ -867,7 +867,7 @@ def geom_match_simple(base_cube,
     dst_arr = input_cube.read_array(dtype=dst_type)
     
     box = (0, 0, max(dst_arr.shape[1], base_arr.shape[1]), max(dst_arr.shape[0], base_arr.shape[0]))
-    dst_arr = np.array(Image.fromarray(arr).crop(box))
+    dst_arr = np.array(Image.fromarray(dst_arr).crop(box))
 
     dst_arr = tf.warp(dst_arr, affine)
     print(base_arr.shape, dst_arr.shape )
