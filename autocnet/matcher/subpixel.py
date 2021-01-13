@@ -18,7 +18,6 @@ import PIL
 from PIL import Image 
 
 from autocnet.matcher.naive_template import pattern_match, pattern_match_autoreg
-from autocnet.matcher.subpixel import subpixel_template_classic
 from autocnet.matcher import ciratefi
 from autocnet.io.db.model import Measures, Points, Images, JsonEncoder
 from autocnet.graph.node import NetworkNode
@@ -1190,6 +1189,7 @@ def geom_match(base_cube,
     mlat, mlon = spatial.isis.image_to_ground(base_cube.file_name, bcenter_x, bcenter_y)
     center_x, center_y = spatial.isis.ground_to_image(input_cube.file_name, mlon, mlat)[::-1]
 
+
 def geom_match(destination_cube,
                source_cube,
                bcenter_x,
@@ -1503,9 +1503,6 @@ def subpixel_register_point(pointid,
     if not ncg.Session:
         raise BrokenPipeError('This func requires a database session from a NetworkCandidateGraph.')
 
-    if isinstance(matchfunc, str):
-       matchfunc=matchfunc.lower()
-
     if version not in geom_funcs.keys():
         raise Exception(f"{version} not a valid geom_match function version.")
     geom_func = geom_funcs[version]
@@ -1544,7 +1541,8 @@ def subpixel_register_point(pointid,
             print('geom_match image:', res.path)
             try:
                 new_x, new_y, dist, metric,  _ = geom_func(source_node.geodata, destination_node.geodata,
-                                                        source.apriorisample, source.aprioriline, match_func=match_func,
+                                                        source.apriorisample, source.aprioriline, 
+                                                        match_func=match_func,
                                                         match_kwargs=match_kwargs)
             except Exception as e:
                 print(f'geom_match failed on measure {measure.id} with exception -> {e}')
@@ -1597,6 +1595,7 @@ def subpixel_register_point(pointid,
             resultlog.append(currentlog)
 
     return resultlog
+
 
 def subpixel_register_points(subpixel_template_kwargs={'image_size':(251,251)},
                              cost_kwargs={},
