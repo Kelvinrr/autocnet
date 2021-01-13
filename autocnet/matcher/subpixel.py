@@ -927,7 +927,7 @@ def geom_match_simple(base_cube,
         # pcm = axs[1][1].imshow(temp_corrmap**2, interpolation=None, cmap="coolwarm")
         plt.show()
 
-    return sample, line, dist, metric
+    return sample, line, dist, metric, None
 
 
 def geom_match_classic(base_cube,
