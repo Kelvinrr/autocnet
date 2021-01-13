@@ -228,7 +228,7 @@ def subpixel_phase(sx, sy, dx, dy,
     dx = d_roi.x - shift_x
     dy = d_roi.y - shift_y
 
-    return dx, dy, (error, diffphase)
+    return dx, dy, error
 
 
 def subpixel_transformed_template(sx, sy, dx, dy,
@@ -1566,6 +1566,7 @@ def subpixel_register_point(pointid,
                     measure.ignore = True # Unable to geom match and no previous sucesses
                 continue
 
+            print(metric)
             measure.template_metric = metric
             measure.template_shift = dist
 
