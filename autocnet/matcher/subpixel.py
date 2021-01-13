@@ -15,10 +15,9 @@ from pysis.exceptions import ProcessError
 import pvl
 
 import PIL
-from PIL import Image 
+from PIL import Image
 
 from autocnet.matcher.naive_template import pattern_match, pattern_match_autoreg
-from autocnet.matcher.subpixel import subpixel_template_classic
 from autocnet.matcher import ciratefi
 from autocnet.io.db.model import Measures, Points, Images, JsonEncoder
 from autocnet.graph.node import NetworkNode
@@ -792,8 +791,7 @@ def geom_match_simple(base_cube,
     autocnet.matcher.subpixel.subpixel_phase: for list of kwargs that can be passed to the matcher
     """
     print("in geommatch")
-    size_x = int(size_x)
-    size_y = int(size_y)
+    print("subpixel kwargs", template_kwargs)
 
     if not isinstance(input_cube, GeoDataset):
         raise Exception("input cube must be a geodataset obj")
@@ -839,7 +837,6 @@ def geom_match_simple(base_cube,
     base_gcps = np.array([*base_corners])
 
     dst_gcps = np.array([*dst_corners])
-    print(base_gcps, dst_gcps)
 
     start_x = dst_gcps[:,0].min()
     start_y = dst_gcps[:,1].min()
@@ -862,13 +859,11 @@ def geom_match_simple(base_cube,
     #dst_pixels = list(map(int, [start_x, start_y, stop_x-start_x, stop_y-start_y]))
     dst_type = isis2np_types[pvl.load(input_cube.file_name)["IsisCube"]["Core"]["Pixels"]["Type"]]
     dst_arr = input_cube.read_array(dtype=dst_type)
-    
+
     box = (0, 0, max(dst_arr.shape[1], base_arr.shape[1]), max(dst_arr.shape[0], base_arr.shape[0]))
-    dst_arr = np.array(Image.fromarray(arr).crop(box))
+    dst_arr = np.array(Image.fromarray(dst_arr).crop(box))
 
     dst_arr = tf.warp(dst_arr, affine)
-    print(base_arr.shape, dst_arr.shape )
-    print(bcenter_x, bcenter_y)
 
     if verbose:
         fig, axs = plt.subplots(1, 2)
@@ -885,7 +880,6 @@ def geom_match_simple(base_cube,
                             **func_kwargs)
 
     x,y,maxcorr,temp_corrmap = restemplate
-    print("adjusted: ", x, y)
     if x is None or y is None:
         return None, None, None, None, None
     metric = maxcorr
@@ -901,7 +895,7 @@ def geom_match_simple(base_cube,
         axs[0][2].axhline(y=oarr.shape[1]/2, color="red", linestyle="-", alpha=1)
         axs[0][2].axvline(x=oarr.shape[1]/2, color="red", linestyle="-", alpha=1)
         axs[0][2].set_title("Original Registered Image")
-        
+
         darr = roi.Roi(dst_arr, x, y, size_x, size_y).clip()
         axs[0][1].imshow(bytescale(darr, cmin=0), cmap="Greys_r")
         axs[0][1].axhline(y=darr.shape[1]/2, color="red", linestyle="-", alpha=1)
@@ -913,12 +907,12 @@ def geom_match_simple(base_cube,
         axs[0][0].axhline(y=barr.shape[1]/2, color="red", linestyle="-", alpha=1)
         axs[0][0].axvline(x=barr.shape[1]/2, color="red", linestyle="-", alpha=1)
         axs[0][0].set_title("Base")
-        
+
         axs[1][0].imshow(bytescale(darr.astype("f")/barr.astype("f")), cmap="Greys_r", alpha=.6)
         axs[1][0].axhline(y=barr.shape[1]/2, color="red", linestyle="-", alpha=.5)
         axs[1][0].axvline(x=barr.shape[1]/2, color="red", linestyle="-", alpha=.5)
         axs[1][0].set_title("overlap")
-    
+
         pcm = axs[1][1].imshow(temp_corrmap**2, interpolation=None, cmap="coolwarm")
         plt.show()
 
@@ -984,9 +978,6 @@ def geom_match_classic(base_cube,
     autocnet.matcher.subpixel.subpixel_template: for list of kwargs that can be passed to the matcher
     autocnet.matcher.subpixel.subpixel_phase: for list of kwargs that can be passed to the matcher
     """
-    
-    size_x = (int)size_x
-    size_y = (int)size_y
 
     if not isinstance(input_cube, GeoDataset):
         raise Exception("input cube must be a geodataset obj")
@@ -1405,7 +1396,7 @@ def subpixel_register_measure(measureid,
                       'status': ''}
 
         try:
-            new_x, new_y, dist, metric,  _ = geom_match(source_node.geodata, destination_node.geodata,
+            new_x, new_y, dist, metric,  _ = geom_match_simple(source_node.geodata, destination_node.geodata,
                                                         source.sample, source.line,
                                                         template_kwargs=subpixel_template_kwargs)
         except Exception as e:
