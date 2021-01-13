@@ -403,6 +403,7 @@ def subpixel_transformed_template(sx, sy, dx, dy,
 
     return dx, dy, metrics, corrmap
 
+
 def subpixel_template_classic(sx, sy, dx, dy,
                               s_img, d_img,
                               image_size=(251, 251),
@@ -581,6 +582,7 @@ def subpixel_template(sx, sy, dx, dy,
 
     return dx, dy, metrics, corrmap
 
+
 def subpixel_ciratefi(sx, sy, dx, dy, s_img, d_img, search_size=251, template_size=51, **kwargs):
     """
     Uses a pattern-matcher on subsets of two images determined from the passed-in keypoints and optional sizes to
@@ -732,7 +734,8 @@ def geom_match_simple(base_cube,
                        bcenter_y,
                        size_x=60,
                        size_y=60,
-                       template_kwargs={"image_size":(101,101), "template_size":(31,31)},
+                       matchfunc=subpixel_template_classic,
+                       func_kwargs = {"image_size":(101,101), "template_size":(31,31)},
                        phase_kwargs=None,
                        verbose=True):
     """
@@ -877,7 +880,9 @@ def geom_match_simple(base_cube,
 
     # Run through one step of template matching then one step of phase matching
     # These parameters seem to work best, should pass as kwargs later
-    restemplate = subpixel_template_classic(bcenter_x, bcenter_y, bcenter_x, bcenter_y, bytescale(base_arr, cmin=0), bytescale(dst_arr, cmin=0), **template_kwargs)
+    restemplate = matchfunc(bcenter_x, bcenter_y, bcenter_x, bcenter_y, 
+                            bytescale(base_arr, cmin=0), bytescale(dst_arr, cmin=0), 
+                            **func_kwargs)
 
     x,y,maxcorr,temp_corrmap = restemplate
     print("adjusted: ", x, y)
