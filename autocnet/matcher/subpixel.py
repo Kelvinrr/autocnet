@@ -1503,9 +1503,14 @@ def subpixel_register_point(pointid,
     if not ncg.Session:
         raise BrokenPipeError('This func requires a database session from a NetworkCandidateGraph.')
 
-    if version not in geom_funcs.keys():
-        raise Exception(f"{version} not a valid geom_match function version.")
-    geom_func = geom_funcs[version]
+    if geom_func not in geom_funcs.keys():
+        raise Exception(f"{geom_func} not a valid geom_match function version.")
+    geom_func = geom_funcs[geom_func]
+    
+
+    if match_func not in match_funcs.keys():
+        raise Exception(f"{match_func} not a valid geom_match function version.")
+    match_func = match_funcs[match_func]
 
     if isinstance(pointid, Points):
         pointid = pointid.id
