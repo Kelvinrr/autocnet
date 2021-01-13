@@ -465,7 +465,7 @@ def subpixel_template_classic(sx, sy, dx, dy,
     dx = d_roi.x - shift_x
     dy = d_roi.y - shift_y
 
-    return dx, dy, metrics, corrmap
+    return dx, dy, metrics
 
 
 def subpixel_template(sx, sy, dx, dy,
@@ -1581,6 +1581,8 @@ def subpixel_register_point(pointid,
                 currentlog['status'] = f'WTF old and new cost are equal for measure {measure.id}. {measure.weight} = {cost}.'
                 resultlog.append(currentlog)
                 continue
+
+            print(cost , ": ", threshold)
 
             if cost <= threshold:
                 currentlog['status'] = f'Cost failed. Distance calculated: {measure.template_shift}. Metric calculated: {measure.template_metric}.'
