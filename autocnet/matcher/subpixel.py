@@ -887,7 +887,9 @@ def geom_match_simple(base_cube,
                             bytescale(base_arr, cmin=0), bytescale(dst_arr, cmin=0), 
                             **match_kwargs)
 
-    x,y,maxcorr,temp_corrmap = restemplate
+    
+    x,y,maxcorr = restemplate
+
     print("adjusted: ", x, y)
     if x is None or y is None:
         return None, None, None, None, None
@@ -922,10 +924,10 @@ def geom_match_simple(base_cube,
         axs[1][0].axvline(x=barr.shape[1]/2, color="red", linestyle="-", alpha=.5)
         axs[1][0].set_title("overlap")
     
-        pcm = axs[1][1].imshow(temp_corrmap**2, interpolation=None, cmap="coolwarm")
+        # pcm = axs[1][1].imshow(temp_corrmap**2, interpolation=None, cmap="coolwarm")
         plt.show()
 
-    return sample, line, dist, metric, temp_corrmap
+    return sample, line, dist, metric
 
 
 def geom_match_classic(base_cube,
