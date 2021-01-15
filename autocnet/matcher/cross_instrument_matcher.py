@@ -283,6 +283,7 @@ def propagate_point(Session,
                 print(f'prop point: dest_image: {dest_image}')
                 print(f'prop point: (sx, sy): ({sx}, {sy})')
                 x,y, dist, metrics, corrmap = geom_match_simple(base_image, dest_image, sx, sy, 16, 16, \
+                        match_func = match_func, \
                         match_kwargs=match_kwargs, \
                         verbose=verbose)
             except Exception as e:
