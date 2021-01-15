@@ -33,6 +33,41 @@ isis2np_types = {
         "Real" : "float64"
 }
 
+
+def check_geom_func(func):
+    # TODO: Pain. Stick with one of these and delete this function along with 
+    # everything else  
+    geom_funcs = {
+            "classic": geom_match_classic,
+            "new": geom_match,
+            "simple" : geom_match_simple,
+    }
+
+    if func in geom_funcs.values():
+        return func
+
+    if func in geom_funcs.keys():
+        return match_funcs[func]
+
+    raise Exception(f"{func} not a valid geometry function.") 
+
+
+def check_match_func(func):
+    match_funcs = {
+        "classic": subpixel_template_classic,
+        "phase": iterative_phase,
+        "template": subpixel_template
+    }
+
+    if func in match_funcs.values():
+        return func 
+
+    if func in match_funcs.keys():
+        return match_funcs[func]
+
+    raise Exception(f"{func} not a valid matching function.") 
+
+
 # TODO: look into KeyPoint.size and perhaps use to determine an appropriately-sized search/template.
 def _prep_subpixel(nmatches, nstrengths=2):
     """
@@ -1403,30 +1438,14 @@ def subpixel_register_point(pointid,
 
     geom_func=geom_func.lower()
     match_func=match_func.lower() 
-    
-    geom_funcs = {
-        "classic": geom_match_classic,
-        "new": geom_match,
-        "simple" : geom_match_simple,
-    }
-    
-    match_funcs = {
-        "classic": subpixel_template_classic,
-        "phase": iterative_phase,
-        "template": subpixel_template
-    }
+
+    print(f"Using {geom_func} with the {match_func} matcher.")
 
     if not ncg.Session:
         raise BrokenPipeError('This func requires a database session from a NetworkCandidateGraph.')
 
-    if geom_func not in geom_funcs.keys():
-        raise Exception(f"{geom_func} not a valid geom_match function version.")
-    geom_func = geom_funcs[geom_func]
-    
-
-    if match_func not in match_funcs.keys():
-        raise Exception(f"{match_func} not a valid geom_match function version.")
-    match_func = match_funcs[match_func]
+    match_func = check_match_func(match_func)
+    geom_func = check_geom_func(geom_func)
 
     if isinstance(pointid, Points):
         pointid = pointid.id
