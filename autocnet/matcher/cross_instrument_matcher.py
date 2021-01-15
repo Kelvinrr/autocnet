@@ -356,7 +356,7 @@ def propagate_control_network(Session,
         size_x=40,
         size_y=40,
         match_func="classic", 
-        template_kwargs={'image_size': (39,39), 'template_size': (21,21)},
+        match_kwargs={'image_size': (39,39), 'template_size': (21,21)},
         verbose=False,
         cost=lambda x,y: y == np.max(x)):
     """
