@@ -43,6 +43,7 @@ from shapely.geometry import Point
 
 from plurmy import Slurm
 
+from autocnet.matcher.subpixel import check_match_func
 from autocnet.io.db.model import Images, Points, Measures, JsonEncoder
 from autocnet.cg.cg import distribute_points_in_geom, xy_in_polygon
 from autocnet.io.db.connection import new_connection
@@ -171,7 +172,7 @@ def propagate_point(Session,
                     samples,
                     size_x=40,
                     size_y=40,
-                    match_func=subpixel_template_classic, 
+                    match_func="classic", 
                     match_kwargs={'image_size': (39, 39), 'template_size': (21, 21)},
                     verbose=False,
                     cost=lambda x, y: y == np.max(x)):
@@ -354,7 +355,7 @@ def propagate_control_network(Session,
         base_cnet,
         size_x=40,
         size_y=40,
-        match_func=subpixel_template_classic, 
+        match_func="classic", 
         template_kwargs={'image_size': (39,39), 'template_size': (21,21)},
         verbose=False,
         cost=lambda x,y: y == np.max(x)):
